@@ -25,6 +25,7 @@
 ```bash
 git clone https://github.com/GregoryNavasarkian/fileclip.git
 cd fileclip
+chmod +x ./install.sh
 ./install.sh
 ```
 
