@@ -23,7 +23,7 @@
 ### Using Make
 
 ```bash
-git clone https://github.com/yourusername/fileclip.git
+git clone https://github.com/GregoryNavasarkian/fileclip.git
 cd fileclip
 ./install.sh
 ```
