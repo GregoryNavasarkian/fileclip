@@ -30,7 +30,16 @@ chmod +x ./install.sh
 ./install.sh
 ```
 
-This builds and installs the `fileclip` binary to `/usr/local/bin`.
+This builds and installs the `fileclip` binary to `/usr/local/bin` by default.
+
+#### **Custom Install Location**
+
+You can change the install location by overriding the `PREFIX` variable when running `make install`.  
+For example, to install to `/usr/bin`:
+
+```bash
+sudo make install PREFIX=/usr/bin
+```
 
 ---
 
