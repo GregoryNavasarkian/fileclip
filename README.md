@@ -1,6 +1,6 @@
 # FileClip
 
-**fileclip** is a simple command-line clipboard tool for files and directories on macOS. It lets you "copy" a file or folder to the clipboard and "paste" it later into the current directory — like a CLI-based copy-paste for the file system.
+**fileclip** is a simple command-line clipboard tool for files and directories on macOS. It lets you "copy" a file or folder to the clipboard and "paste" or "move" it later into the current directory — like a CLI-based copy-paste for the file system.
 
 📋 Built on macOS clipboard utilities (`pbcopy` and `pbpaste`)  
 🧠 Remembers absolute file paths using your system clipboard  
@@ -12,6 +12,7 @@
 
 - Copy files or directories to clipboard (`-c`)
 - Paste to current working directory (`-p`)
+- Move to current working directory (`-m`)
 - Show current clipboard contents (`-d`)
 - Clear clipboard (`-r`)
 - Built specifically for macOS
@@ -29,7 +30,16 @@ chmod +x ./install.sh
 ./install.sh
 ```
 
-This builds and installs the `fileclip` binary to `/usr/local/bin`.
+This builds and installs the `fileclip` binary to `/usr/local/bin` by default.
+
+#### **Custom Install Location**
+
+You can change the install location by overriding the `PREFIX` variable when running `make install`.  
+For example, to install to `/usr/bin`:
+
+```bash
+sudo make install PREFIX=/usr/bin
+```
 
 ---
 
@@ -40,6 +50,7 @@ fileclip -c somefile.txt      # Copy file
 fileclip -c somedir           # Copy folder
 fileclip -c                   # Copy current directory
 fileclip -p                   # Paste into current folder
+fileclip -m                   # Move into current folder
 fileclip -d                   # Show clipboard contents
 fileclip -r                   # Clear clipboard
 fileclip -v                   # Show version
