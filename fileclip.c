@@ -8,12 +8,12 @@
 
 #define FILECLIP_VERSION "0.1.1"
 
-void printHelp();
+void printHelp(void);
 void copy(const char *arg, const char *cwd);
 void paste(bool isMove);
 int isDir(const char *path);
-void showClipboardContents();
-void clearClipboard();
+void showClipboardContents(void);
+void clearClipboard(void);
 
 /**
  * @brief Main entry point for the fileclip utility.
@@ -36,7 +36,7 @@ int main(int argc, char *argv[]) {
 
     // Check for valid argument count
     if (argc < 2 || argc > 3) {
-        fprintf(stderr, "fileclip: invalid arguments\n");
+        fputs("fileclip: invalid arguments\n", stderr);
         printHelp();
         return 1;
     }
@@ -56,11 +56,10 @@ int main(int argc, char *argv[]) {
             printf("fileclip: clipboard cleared\n");
         } else if (strcmp(argv[1], "-d") == 0) {
             showClipboardContents();
-        } else if (strcmp(argv[1], "-v") == 0 ||
-                   strcmp(argv[1], "--version") == 0) {
+        } else if (strcmp(argv[1], "-v") == 0 || strcmp(argv[1], "--version") == 0) {
             printf("fileclip version %s\n", FILECLIP_VERSION);
         } else {
-            fprintf(stderr, "fileclip: unknown argument\n");
+            fputs("fileclip: unknown arguments\n", stderr);
             return 1;
         }
     } else if (argc == 3) {
@@ -68,7 +67,7 @@ int main(int argc, char *argv[]) {
         if (strcmp(argv[1], "-c") == 0) {
             copy(argv[2], cwd);
         } else {
-            fprintf(stderr, "fileclip: invalid usage\n");
+            fputs("fileclip: invalid usage\n", stderr);
             printHelp();
             return 1;
         }
@@ -79,7 +78,7 @@ int main(int argc, char *argv[]) {
 /**
  * @brief Prints usage information for the fileclip utility.
  */
-void printHelp() {
+void printHelp(void) {
     printf("Usage: fileclip [-c] [-p] [-m] [-r] [-d] [-v] [file]\n");
     printf("  -c [file]   Copy file or current directory to clipboard\n");
     printf("  -p          Paste copied file or directory in current directory\n");
@@ -104,9 +103,26 @@ void copy(const char *arg, const char *cwd) {
 
     // Determine the target path
     if (strcmp(arg, "null") == 0) {
-        strcpy(path, cwd);
+        strncpy(path, cwd, PATH_MAX - 1);
+        path[PATH_MAX - 1] = '\0';
     } else {
-        snprintf(path, sizeof(path), "%s/%s", cwd, arg);
+        // Check if the combined path would exceed PATH_MAX
+        if (strlen(cwd) + strlen(arg) + 2 >= PATH_MAX) {
+            fputs("fileclip: path too long\n", stderr);
+            exit(2);
+        }
+        // Check for invalid characters in the path
+        if (strstr(arg, "..") != NULL || strpbrk(arg, "&;|`$><") != NULL) {
+            fputs("fileclip: invalid path (contains '..' or shell metacharacters)\n", stderr);
+            exit(2);
+        }
+        // Handle absolute paths
+        if (arg[0] == '/') {
+            strncpy(path, arg, PATH_MAX - 1);
+            path[PATH_MAX - 1] = '\0';
+        } else {
+            snprintf(path, sizeof(path), "%s/%s", cwd, arg);
+        }
     }
 
     // Check if file exists
@@ -163,7 +179,7 @@ void paste(bool isMove) {
     }
 
     if (!fgets(path, PATH_MAX, fp)) {
-        fprintf(stderr, "fileclip: clipboard is empty or unreadable\n");
+        fputs("fileclip: clipboard is empty or unreadable\n", stderr);
         pclose(fp);
         exit(1);
     }
@@ -171,6 +187,12 @@ void paste(bool isMove) {
 
     // Remove trailing newline
     path[strcspn(path, "\n")] = '\0';
+
+    // Check for invalid or unsafe paths
+    if (strstr(path, "..") != NULL || strpbrk(path, "&;|`$><") != NULL) {
+        fputs("fileclip: invalid or unsafe path in clipboard\n", stderr);
+        exit(2);
+    }
 
     // Check that the copied path still exists
     if (access(path, F_OK) != 0) {
@@ -180,30 +202,41 @@ void paste(bool isMove) {
 
     // Prepare the appropriate cp command
     bool dir = isDir(path);
-    char *cmd = malloc(PATH_MAX + 20); // Enough for "cp -R " + path + " ."
+    size_t cmd_size = PATH_MAX + 100; // Extra space for command and quotes
+    char *cmd = malloc(cmd_size);
 
     if (!cmd) {
         perror("fileclip: malloc");
         exit(2);
     }
 
-    snprintf(cmd, PATH_MAX + 20, "cp %s \"%s\" .", dir ? "-R" : "", path);
+    if (isMove) {
+        snprintf(cmd, cmd_size, "mv \"%s\" .", path);
+    } else {
+        // Copy command
+        snprintf(cmd, cmd_size, "cp %s \"%s\" .", dir ? "-R" : "", path);
+    }
 
     int result = system(cmd);
     free(cmd);
 
     if (result != 0) {
-        fprintf(stderr, "fileclip: paste failed\n");
+        fputs("fileclip: paste failed\n", stderr);
+        perror("fileclip: system command");
         exit(3);
     }
 
-    printf("fileclip pasted: %s\n", path);
+    if (isMove) {
+        printf("fileclip moved: %s\n", path);
+    } else {
+        printf("fileclip pasted: %s\n", path);
+    }
 }
 
 /**
  * @brief Displays the current contents of the clipboard
  */
-void showClipboardContents() {
+void showClipboardContents(void) {
     char path[PATH_MAX];
 
     FILE *fp = popen("pbpaste", "r");
@@ -213,7 +246,7 @@ void showClipboardContents() {
     }
 
     if (!fgets(path, PATH_MAX, fp)) {
-        fprintf(stderr, "fileclip: clipboard is empty\n");
+        fputs("fileclip: clipboard is empty\n", stderr);
         pclose(fp);
         return;
     }
@@ -229,10 +262,12 @@ void showClipboardContents() {
  *
  * Sends an empty string to `pbcopy`.
  */
-void clearClipboard() {
+void clearClipboard(void) {
     FILE *fp = popen("pbcopy", "w");
-    if (fp) {
-        fputs("", fp);
-        pclose(fp);
+    if (!fp) {
+        perror("fileclip: pbcopy");
+        exit(2);
     }
+    fputs("", fp);
+    pclose(fp);
 }
