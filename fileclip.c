@@ -6,7 +6,7 @@
 #include <sys/stat.h>
 #include <unistd.h>
 
-#define FILECLIP_VERSION "0.1.1"
+#define FILECLIP_VERSION "0.2.1"
 
 void printHelp(void);
 void copy(const char *arg, const char *cwd);
